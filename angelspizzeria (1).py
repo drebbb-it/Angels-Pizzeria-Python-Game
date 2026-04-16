@@ -1,5 +1,6 @@
 import pygame 
 import sys
+import time 
 
 pygame.init()
 
@@ -31,6 +32,9 @@ hello_bg = pygame.transform.scale(hello_bg, (WIDTH, HEIGHT))
 # Loading background
 loading_bg = pygame.image.load("background_screen/loadingrat_bg.png")
 loading_bg = pygame.transform.scale(loading_bg, (WIDTH, HEIGHT))
+
+# Play button image
+play_btn_img = pygame.image.load("buttons_images/play_btn.png")
 
 # Game states
 state = "menu"
@@ -143,7 +147,7 @@ while True:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 hello_x = 520
                 hello_y = 420
-                hello_play_button = pygame.Rect(hello_x, hello_y + 170, 360, 110)
+                hello_play_button = pygame.Rect(hello_x, hello_y + 170, 340, 100)
                 if hello_play_button.collidepoint(event.pos):
                     state = "loading"
                     init_loading_screen()
@@ -159,10 +163,8 @@ while True:
         title_y = 160
         draw_text_outline(title_text, title_font, WHITE, BLACK, title_x, title_y)
 
-        pygame.draw.rect(screen, YELLOW, play_button, border_radius=20)
-        pygame.draw.rect(screen, BLACK, play_button, 5, border_radius=20)
-        play_text = font.render("PLAY", True, WHITE)
-        screen.blit(play_text, play_text.get_rect(center=play_button.center))
+        play_btn_scaled = pygame.transform.scale(play_btn_img, (340, 100))
+        screen.blit(play_btn_scaled, (play_button.x, play_button.y))
 
     # REGISTER SCREEN DRAWING
     elif state == "register":
@@ -172,13 +174,13 @@ while True:
         title_y = 180
         draw_text_outline(title_text, font, WHITE, BLACK, title_x, title_y)
 
-        input_box = pygame.Rect(WIDTH//2 - 350, HEIGHT//2 + 80, 700, 100)
+        input_box = pygame.Rect(WIDTH//2 - 350, HEIGHT//2 + 180, 700, 100)
         pygame.draw.rect(screen, WHITE, input_box, border_radius=20)
         pygame.draw.rect(screen, BLACK, input_box, 5, border_radius=20)
         name_surface = small_font.render(user_text, True, BLACK)
         screen.blit(name_surface, (input_box.x + 25, input_box.y + 20))
         info = small_font.render("Press ENTER to continue", True, WHITE)
-        info_rect = info.get_rect(center=(WIDTH//2, HEIGHT//2 + 220))
+        info_rect = info.get_rect(center=(WIDTH//2, HEIGHT//2 + 320))
         screen.blit(info, info_rect)
 
     # HELLO SCREEN DRAWING
@@ -187,11 +189,9 @@ while True:
         hello_y = 420
         hello_text = font.render(f"Hello, {user_text}!", True, BLACK)
         screen.blit(hello_text, (hello_x, hello_y))
-        hello_play_button = pygame.Rect(hello_x, hello_y + 170, 360, 110)
-        pygame.draw.rect(screen, YELLOW, hello_play_button, border_radius=20)
-        pygame.draw.rect(screen, BLACK, hello_play_button, 5, border_radius=20)
-        play_text = font.render("PLAY", True, WHITE)
-        screen.blit(play_text, play_text.get_rect(center=hello_play_button.center))
+        hello_play_button = pygame.Rect(hello_x, hello_y + 170, 340, 100)
+        play_btn_scaled = pygame.transform.scale(play_btn_img, (340, 100))
+        screen.blit(play_btn_scaled, (hello_play_button.x, hello_play_button.y))
 
     # LOADING SCREEN DRAWING - MODERATE SPEED!
     elif state == "loading":
