@@ -58,11 +58,14 @@ level_images.append(pygame.image.load("conditions/level4.png").convert_alpha())
 level_images.append(pygame.image.load("conditions/level5.png").convert_alpha())
 
 # Scale level images
-LEVEL_HEIGHT = 200
+LEVEL_WIDTH = int(WIDTH * 0.14)
+LEVEL_HEIGHT = 180
 LEVEL_Y_OFFSET = 280
+LEVEL_SPACING = 40
+LEVEL_X_START = (WIDTH - (5 * LEVEL_WIDTH + 4 * LEVEL_SPACING)) // 2
 level_scaled = []
 for img in level_images:
-    scaled_img = pygame.transform.scale(img, (int(WIDTH * 0.16), LEVEL_HEIGHT))
+    scaled_img = pygame.transform.scale(img, (LEVEL_WIDTH, LEVEL_HEIGHT))
     level_scaled.append(scaled_img)
 
 # Game progress
@@ -272,9 +275,9 @@ while True:
             # Level selection
             for i in range(5):
                 level_rect = pygame.Rect(
-                    int(WIDTH * 0.08 + i * WIDTH * 0.17),
+                    LEVEL_X_START + i * (LEVEL_WIDTH + LEVEL_SPACING),
                     HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET,
-                    int(WIDTH * 0.16),
+                    LEVEL_WIDTH,
                     LEVEL_HEIGHT
                 )
                 if level_rect.collidepoint(mouse_pos):
@@ -340,7 +343,7 @@ while True:
     elif state == "home":
         # Draw levels
         for i in range(5):
-            level_x = int(WIDTH * 0.08 + i * WIDTH * 0.17)
+            level_x = LEVEL_X_START + i * (LEVEL_WIDTH + LEVEL_SPACING)
             level_y = HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET
             
             if i > current_level_unlocked:
