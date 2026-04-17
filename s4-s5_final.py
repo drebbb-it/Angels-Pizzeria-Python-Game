@@ -32,6 +32,7 @@ try:
     register_bg = pygame.image.load("background_screen/register_bg.png")
     register_bg = pygame.transform.scale(register_bg, (WIDTH, HEIGHT))
 
+    # **FIXED: hello_bg was using register_bg**
     hello_bg = pygame.image.load("background_screen/hello_bg.png")
     hello_bg = pygame.transform.scale(hello_bg, (WIDTH, HEIGHT))
 
@@ -76,7 +77,6 @@ LEVEL_WIDTH = int(WIDTH * 0.11)   # 211px
 LEVEL_HEIGHT = 130                # 130px
 
 # --- ADJUSTED Y OFFSET ---
-# Increased from 200 to 350 to move the buttons higher up on the screen
 LEVEL_Y_OFFSET = 350              
 
 LEVEL_SPACING = 30                # Tight gaps
@@ -86,8 +86,8 @@ for img in level_images:
     scaled_img = pygame.transform.scale(img, (LEVEL_WIDTH, LEVEL_HEIGHT))
     level_scaled.append(scaled_img)
 
-# Game progress
-current_level_unlocked = 0  # 0 = level1 unlocked
+# Game progress - Changed from current_level_unlocked to levels_completed
+levels_completed = -1  # -1 = no levels completed, 0 = level 1 completed, 4 = all levels completed
 
 # Game states
 state = "menu"
@@ -96,7 +96,7 @@ condition_state = None  # "condition1", "condition2", etc.
 warning_active = False
 warning_timer = 0
 
-play_button = pygame.Rect(WIDTH//2 - 170, HEIGHT//2 + 200, 340, 100)
+play_button = pygame.Rect(WIDTH//2 - 170, HEIGHT//2 + 200, 340, 100)  # **FIXED: Added width and height**
 clock = pygame.time.Clock()
 
 # LOADING SCREEN VARIABLES
@@ -285,8 +285,9 @@ while True:
                 if accept_rect.collidepoint(mouse_pos):
                     print(f"ACCEPT CHALLENGE - Starting Level {level_num}!")
                     # TODO: Start actual game level here
-                    # For demo: unlock next level
-                    current_level_unlocked = min(4, level_num)
+                    # For demo: "complete" the level and unlock next one
+                    if levels_completed < level_num - 1:
+                        levels_completed = level_num - 1
                     condition_state = None
                 elif exit_rect.collidepoint(mouse_pos):
                     print(f"EXIT - Back to level selection")
@@ -298,22 +299,24 @@ while True:
                 warning_active = False
                 continue
             
-            # Level selection - **UPDATED WITH NEW Y POSITION**
+            # **NEW LEVEL SELECTION LOGIC**
+            # Any level <= levels_completed + 1 is playable (completed levels + current level)
             for i in range(5):
                 level_rect = pygame.Rect(
                     LEVEL_X_START + i * (LEVEL_WIDTH + LEVEL_SPACING),
-                    HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET,  # **MOVED HIGHER**
+                    HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET,
                     LEVEL_WIDTH,
                     LEVEL_HEIGHT
                 )
                 if level_rect.collidepoint(mouse_pos):
-                    if i <= current_level_unlocked:
+                    # Check if level is playable
+                    if i <= levels_completed + 1:  # Can play completed levels + current level
                         condition_state = f"condition{i+1}"
                         print(f"Opening condition screen for Level {i+1}")
                     else:
                         warning_active = True
                         warning_timer = pygame.time.get_ticks()
-                        print(f"Level {i+1} LOCKED! Complete Level {current_level_unlocked+1} first")
+                        print(f"Level {i+1} LOCKED! Complete Level {levels_completed+1} first")
 
     # DRAWING
     if state == "menu":
@@ -367,16 +370,20 @@ while True:
             screen.blit(current_frame, (char_x, char_y))
 
     elif state == "home":
-        # Draw levels - **UPDATED WITH NEW Y POSITION**
+        # **UPDATED LEVEL DRAWING LOGIC**
+        # Show all levels as normal if all completed, otherwise only darken truly locked levels
         for i in range(5):
             level_x = LEVEL_X_START + i * (LEVEL_WIDTH + LEVEL_SPACING)
-            level_y = HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET  # **MOVED HIGHER**
+            level_y = HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET
             
-            if i > current_level_unlocked:
+            # Only darken levels that are truly locked (beyond current progress)
+            if levels_completed >= 4:  # All levels completed - show all normally
+                screen.blit(level_scaled[i], (level_x, level_y))
+            elif i > levels_completed + 1:  # Level is locked (beyond current progress)
                 temp_surface = level_scaled[i].copy()
                 temp_surface.fill(DARK_GREY, special_flags=pygame.BLEND_RGBA_MULT)
                 screen.blit(temp_surface, (level_x, level_y))
-            else:
+            else:  # Playable level (completed or current)
                 screen.blit(level_scaled[i], (level_x, level_y))
         
         # Draw overlays
