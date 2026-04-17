@@ -24,44 +24,62 @@ RED = (255, 100, 100)
 SEMI_TRANSPARENT = (20, 20, 20, 180)
 
 # Background Images
-menu_bg = pygame.image.load("background_screen/menu_bg.png")
-menu_bg = pygame.transform.scale(menu_bg, (WIDTH, HEIGHT))
+# (Assuming these files exist in your directory)
+try:
+    menu_bg = pygame.image.load("background_screen/menu_bg.png")
+    menu_bg = pygame.transform.scale(menu_bg, (WIDTH, HEIGHT))
 
-register_bg = pygame.image.load("background_screen/register_bg.png")
-register_bg = pygame.transform.scale(register_bg, (WIDTH, HEIGHT))
+    register_bg = pygame.image.load("background_screen/register_bg.png")
+    register_bg = pygame.transform.scale(register_bg, (WIDTH, HEIGHT))
 
-hello_bg = pygame.image.load("background_screen/hello_bg.png")
-hello_bg = pygame.transform.scale(hello_bg, (WIDTH, HEIGHT))
+    hello_bg = pygame.image.load("background_screen/hello_bg.png")
+    hello_bg = pygame.transform.scale(hello_bg, (WIDTH, HEIGHT))
 
-loading_bg = pygame.image.load("background_screen/loadingrat_bg.png")
-loading_bg = pygame.transform.scale(loading_bg, (WIDTH, HEIGHT))
+    loading_bg = pygame.image.load("background_screen/loadingrat_bg.png")
+    loading_bg = pygame.transform.scale(loading_bg, (WIDTH, HEIGHT))
 
-level_bg = pygame.image.load("background_screen/level_bg.png")
-level_bg = pygame.transform.scale(level_bg, (WIDTH, HEIGHT))
+    level_bg = pygame.image.load("background_screen/level_bg.png")
+    level_bg = pygame.transform.scale(level_bg, (WIDTH, HEIGHT))
 
-# Load condition images, symbols, and buttons
-condition_images = [pygame.image.load(f"conditions/condition{i}.png").convert_alpha() for i in range(1, 6)]
-customer_symbol = pygame.image.load("conditions/custumer_symbol.png").convert_alpha()
-time_symbol = pygame.image.load("conditions/time_symbol.png").convert_alpha()
-accept_btn = pygame.image.load("buttons_images/accept_btn.png").convert_alpha()
-exit_btn = pygame.image.load("buttons_images/ex_btn.png").convert_alpha()
+    # Load condition images, symbols, and buttons
+    condition_images = [pygame.image.load(f"conditions/condition{i}.png").convert_alpha() for i in range(1, 6)]
+    customer_symbol = pygame.image.load("conditions/custumer_symbol.png").convert_alpha()
+    time_symbol = pygame.image.load("conditions/time_symbol.png").convert_alpha()
+    accept_btn = pygame.image.load("buttons_images/accept_btn.png").convert_alpha()
+    exit_btn = pygame.image.load("buttons_images/ex_btn.png").convert_alpha()
 
-# Play button image
-play_btn_img = pygame.image.load("buttons_images/play_btn.png")
+    # Play button image
+    play_btn_img = pygame.image.load("buttons_images/play_btn.png")
 
-# Load level images
-level_images = []
-level_images.append(pygame.image.load("conditions/level1.png").convert_alpha())
-level_images.append(pygame.image.load("conditions/level2.png").convert_alpha())
-level_images.append(pygame.image.load("conditions/level3.png").convert_alpha())
-level_images.append(pygame.image.load("conditions/level4.png").convert_alpha())
-level_images.append(pygame.image.load("conditions/level5.png").convert_alpha())
+    # Load level images
+    level_images = []
+    level_images.append(pygame.image.load("conditions/level1.png").convert_alpha())
+    level_images.append(pygame.image.load("conditions/level2.png").convert_alpha())
+    level_images.append(pygame.image.load("conditions/level3.png").convert_alpha())
+    level_images.append(pygame.image.load("conditions/level4.png").convert_alpha())
+    level_images.append(pygame.image.load("conditions/level5.png").convert_alpha())
+except pygame.error as e:
+    print(f"Error loading image: {e}")
+    # Creating dummy surfaces for preview purposes if assets are missing
+    menu_bg = register_bg = hello_bg = loading_bg = level_bg = pygame.Surface((WIDTH, HEIGHT))
+    condition_images = [pygame.Surface((800, 500)) for _ in range(5)]
+    customer_symbol = time_symbol = pygame.Surface((100, 100))
+    accept_btn = pygame.Surface((280, 85))
+    exit_btn = pygame.Surface((120, 80))
+    play_btn_img = pygame.Surface((340, 100))
+    level_images = [pygame.Surface((211, 130)) for _ in range(5)]
+    for img in level_images:
+        img.fill(YELLOW)
 
-# Scale level images
-LEVEL_WIDTH = int(WIDTH * 0.14)
-LEVEL_HEIGHT = 180
-LEVEL_Y_OFFSET = 280
-LEVEL_SPACING = 40
+# Scale level images - SMALL COMPACT BUTTONS HIGHER UP
+LEVEL_WIDTH = int(WIDTH * 0.11)   # 211px
+LEVEL_HEIGHT = 130                # 130px
+
+# --- ADJUSTED Y OFFSET ---
+# Increased from 200 to 350 to move the buttons higher up on the screen
+LEVEL_Y_OFFSET = 350              
+
+LEVEL_SPACING = 30                # Tight gaps
 LEVEL_X_START = (WIDTH - (5 * LEVEL_WIDTH + 4 * LEVEL_SPACING)) // 2
 level_scaled = []
 for img in level_images:
@@ -177,34 +195,41 @@ def draw_warning():
 
 def init_loading_screen():
     global sprite_sheet, frames, SCALED_WIDTH, SCALED_HEIGHT, char_x, char_y, frame_index
-    sprite_sheet = pygame.image.load("conditions/running_rat.png").convert_alpha()
-    
-    FRAME_WIDTH = 32
-    FRAME_HEIGHT = 32
-    TOTAL_FRAMES = 123
-    
-    sheet_width = sprite_sheet.get_width()
-    sheet_height = sprite_sheet.get_height()
-    
-    cols = sheet_width // FRAME_WIDTH
-    rows = sheet_height // FRAME_HEIGHT
-    num_frames = cols * rows
-    
-    if TOTAL_FRAMES > num_frames:
-        TOTAL_FRAMES = num_frames
-    
-    SCALE = 8
-    SCALED_WIDTH = int(FRAME_WIDTH * SCALE)
-    SCALED_HEIGHT = int(FRAME_HEIGHT * SCALE)
-    
-    frames.clear()
-    for i in range(TOTAL_FRAMES):
-        x = (i % cols) * FRAME_WIDTH
-        y = (i // cols) * FRAME_HEIGHT
-        frame = sprite_sheet.subsurface((x, y, FRAME_WIDTH, FRAME_HEIGHT))
-        frame = pygame.transform.scale(frame, (SCALED_WIDTH, SCALED_HEIGHT))
-        frames.append(frame)
-    
+    try:
+        sprite_sheet = pygame.image.load("conditions/running_rat.png").convert_alpha()
+        
+        FRAME_WIDTH = 32
+        FRAME_HEIGHT = 32
+        TOTAL_FRAMES = 123
+        
+        sheet_width = sprite_sheet.get_width()
+        sheet_height = sprite_sheet.get_height()
+        
+        cols = sheet_width // FRAME_WIDTH
+        rows = sheet_height // FRAME_HEIGHT
+        num_frames = cols * rows
+        
+        if TOTAL_FRAMES > num_frames:
+            TOTAL_FRAMES = num_frames
+        
+        SCALE = 8
+        SCALED_WIDTH = int(FRAME_WIDTH * SCALE)
+        SCALED_HEIGHT = int(FRAME_HEIGHT * SCALE)
+        
+        frames.clear()
+        for i in range(TOTAL_FRAMES):
+            x = (i % cols) * FRAME_WIDTH
+            y = (i // cols) * FRAME_HEIGHT
+            frame = sprite_sheet.subsurface((x, y, FRAME_WIDTH, FRAME_HEIGHT))
+            frame = pygame.transform.scale(frame, (SCALED_WIDTH, SCALED_HEIGHT))
+            frames.append(frame)
+    except pygame.error:
+        # Fallback if image doesn't exist
+        SCALED_WIDTH, SCALED_HEIGHT = 256, 256
+        dummy = pygame.Surface((SCALED_WIDTH, SCALED_HEIGHT))
+        dummy.fill(YELLOW)
+        frames = [dummy]
+
     char_x = -SCALED_WIDTH
     char_y = HEIGHT - SCALED_HEIGHT - 150
     frame_index = 0
@@ -238,7 +263,8 @@ while True:
             elif event.key == pygame.K_BACKSPACE:
                 user_text = user_text[:-1]
             else:
-                if len(user_text) < 15:
+                # NEW LOGIC: Only allow letters and spaces using .isalpha()
+                if len(user_text) < 15 and (event.unicode.isalpha() or event.unicode == ' '):
                     user_text += event.unicode
 
         elif state == "hello" and event.type == pygame.MOUSEBUTTONDOWN:
@@ -272,11 +298,11 @@ while True:
                 warning_active = False
                 continue
             
-            # Level selection
+            # Level selection - **UPDATED WITH NEW Y POSITION**
             for i in range(5):
                 level_rect = pygame.Rect(
                     LEVEL_X_START + i * (LEVEL_WIDTH + LEVEL_SPACING),
-                    HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET,
+                    HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET,  # **MOVED HIGHER**
                     LEVEL_WIDTH,
                     LEVEL_HEIGHT
                 )
@@ -341,10 +367,10 @@ while True:
             screen.blit(current_frame, (char_x, char_y))
 
     elif state == "home":
-        # Draw levels
+        # Draw levels - **UPDATED WITH NEW Y POSITION**
         for i in range(5):
             level_x = LEVEL_X_START + i * (LEVEL_WIDTH + LEVEL_SPACING)
-            level_y = HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET
+            level_y = HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET  # **MOVED HIGHER**
             
             if i > current_level_unlocked:
                 temp_surface = level_scaled[i].copy()
