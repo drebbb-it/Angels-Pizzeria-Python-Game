@@ -42,12 +42,14 @@ try:
     level_bg = pygame.image.load("background_screen/level_bg.png")
     level_bg = pygame.transform.scale(level_bg, (WIDTH, HEIGHT))
 
-    # Load condition images, symbols, and buttons
+    tablet_bg = pygame.image.load("background_screen/tablet.png")
+    tablet_bg = pygame.transform.scale(tablet_bg, (WIDTH, HEIGHT))
     condition_images = [pygame.image.load(f"conditions/condition{i}.png").convert_alpha() for i in range(1, 6)]
     customer_symbol = pygame.image.load("conditions/custumer_symbol.png").convert_alpha()
     time_symbol = pygame.image.load("conditions/time_symbol.png").convert_alpha()
     accept_btn = pygame.image.load("buttons_images/accept_btn.png").convert_alpha()
     exit_btn = pygame.image.load("buttons_images/ex_btn.png").convert_alpha()
+    back_btn = pygame.image.load("buttons_images/back_btn.png").convert_alpha()
 
     # Play button image
     play_btn_img = pygame.image.load("buttons_images/play_btn.png")
@@ -62,11 +64,12 @@ try:
 except pygame.error as e:
     print(f"Error loading image: {e}")
     # Creating dummy surfaces for preview purposes if assets are missing
-    menu_bg = register_bg = hello_bg = loading_bg = level_bg = pygame.Surface((WIDTH, HEIGHT))
+    menu_bg = register_bg = hello_bg = loading_bg = level_bg = tablet_bg = pygame.Surface((WIDTH, HEIGHT))
     condition_images = [pygame.Surface((800, 500)) for _ in range(5)]
     customer_symbol = time_symbol = pygame.Surface((100, 100))
     accept_btn = pygame.Surface((280, 85))
     exit_btn = pygame.Surface((120, 80))
+    back_btn = pygame.Surface((120, 80))  # Assuming similar size to exit_btn
     play_btn_img = pygame.Surface((340, 100))
     level_images = [pygame.Surface((211, 130)) for _ in range(5)]
     for img in level_images:
@@ -88,6 +91,9 @@ for img in level_images:
 
 # Game progress - Changed from current_level_unlocked to levels_completed
 levels_completed = -1  # -1 = no levels completed, 0 = level 1 completed, 4 = all levels completed
+
+# Selected level for tablet screen
+selected_level = None
 
 # Game states
 state = "menu"
@@ -246,6 +252,8 @@ while True:
         screen.blit(loading_bg, (0, 0))
     elif state == "home":
         screen.blit(level_bg, (0, 0))
+    elif state == "tablet":
+        screen.blit(tablet_bg, (0, 0))
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -283,11 +291,9 @@ while True:
                 level_num = int(condition_state[-1])
                 accept_rect, exit_rect = draw_condition_screen(level_num)
                 if accept_rect.collidepoint(mouse_pos):
-                    print(f"ACCEPT CHALLENGE - Starting Level {level_num}!")
-                    # TODO: Start actual game level here
-                    # For demo: "complete" the level and unlock next one
-                    if levels_completed < level_num - 1:
-                        levels_completed = level_num - 1
+                    print(f"ACCEPT CHALLENGE - Showing tablet for Level {level_num}!")
+                    selected_level = level_num
+                    state = "tablet"
                     condition_state = None
                 elif exit_rect.collidepoint(mouse_pos):
                     print(f"EXIT - Back to level selection")
@@ -317,6 +323,23 @@ while True:
                         warning_active = True
                         warning_timer = pygame.time.get_ticks()
                         print(f"Level {i+1} LOCKED! Complete Level {levels_completed+1} first")
+
+        elif state == "tablet" and event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            back_rect = pygame.Rect(20, 20, 150, 100)  # Updated size
+            if back_rect.collidepoint(mouse_pos):
+                # Go back to condition screen
+                condition_state = f"condition{selected_level}"
+                state = "home"
+                print(f"Back to condition screen for Level {selected_level}")
+            else:
+                # Any other click starts the level
+                print(f"Starting Level {selected_level}!")
+                # For demo: "complete" the level and unlock next one
+                if levels_completed < selected_level - 1:
+                    levels_completed = selected_level - 1
+                state = "home"
+                selected_level = None
 
     # DRAWING
     if state == "menu":
@@ -395,6 +418,20 @@ while True:
             elapsed = pygame.time.get_ticks() - warning_timer
             if elapsed < 2000:  # 2 seconds
                 draw_warning()
+    elif state == "tablet":
+        # Draw back button in top left with background for visibility
+        back_btn_scaled = pygame.transform.scale(back_btn, (150, 100))  # Made bigger
+        back_rect = pygame.Rect(20, 20, 150, 100)
+        # Draw a more visible background to make button stand out
+        bg_surface = pygame.Surface((160, 110), pygame.SRCALPHA)
+        bg_surface.fill((255, 255, 255, 200))  # Semi-transparent white background
+        pygame.draw.rect(bg_surface, (0, 0, 0), (0, 0, 160, 110), 3, border_radius=10)  # Black border
+        screen.blit(bg_surface, (15, 15))
+        screen.blit(back_btn_scaled, back_rect)
+        
+        # Add text label for clarity
+        back_text = small_font.render("BACK", True, BLACK)
+        screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.bottom + 5))
 
     pygame.display.update()
     clock.tick(60)
