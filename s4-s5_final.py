@@ -42,8 +42,12 @@ try:
     level_bg = pygame.image.load("background_screen/level_bg.png")
     level_bg = pygame.transform.scale(level_bg, (WIDTH, HEIGHT))
 
-    tablet_bg = pygame.image.load("background_screen/tablet.png")
-    tablet_bg = pygame.transform.scale(tablet_bg, (WIDTH, HEIGHT))
+    msg_bg = pygame.image.load("background_screen/msg_screen.png")
+    msg_bg = pygame.transform.scale(msg_bg, (WIDTH, HEIGHT))
+
+    notif_bg = pygame.image.load("background_screen/notif_screen.png")
+    notif_bg = pygame.transform.scale(notif_bg, (WIDTH, HEIGHT))
+
     condition_images = [pygame.image.load(f"conditions/condition{i}.png").convert_alpha() for i in range(1, 6)]
     customer_symbol = pygame.image.load("conditions/custumer_symbol.png").convert_alpha()
     time_symbol = pygame.image.load("conditions/time_symbol.png").convert_alpha()
@@ -64,7 +68,7 @@ try:
 except pygame.error as e:
     print(f"Error loading image: {e}")
     # Creating dummy surfaces for preview purposes if assets are missing
-    menu_bg = register_bg = hello_bg = loading_bg = level_bg = tablet_bg = pygame.Surface((WIDTH, HEIGHT))
+    menu_bg = register_bg = hello_bg = loading_bg = level_bg = msg_bg = notif_bg = pygame.Surface((WIDTH, HEIGHT))
     condition_images = [pygame.Surface((800, 500)) for _ in range(5)]
     customer_symbol = time_symbol = pygame.Surface((100, 100))
     accept_btn = pygame.Surface((280, 85))
@@ -92,8 +96,11 @@ for img in level_images:
 # Game progress - Changed from current_level_unlocked to levels_completed
 levels_completed = -1  # -1 = no levels completed, 0 = level 1 completed, 4 = all levels completed
 
-# Selected level for tablet screen
+# Selected level for msg_screen
 selected_level = None
+
+# Timer for msg_screen transition
+msg_screen_start_time = 0
 
 # Game states
 state = "menu"
@@ -252,8 +259,10 @@ while True:
         screen.blit(loading_bg, (0, 0))
     elif state == "home":
         screen.blit(level_bg, (0, 0))
-    elif state == "tablet":
-        screen.blit(tablet_bg, (0, 0))
+    elif state == "msg_screen":
+        screen.blit(msg_bg, (0, 0))
+    elif state == "notif_screen":
+        screen.blit(notif_bg, (0, 0))
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -291,9 +300,10 @@ while True:
                 level_num = int(condition_state[-1])
                 accept_rect, exit_rect = draw_condition_screen(level_num)
                 if accept_rect.collidepoint(mouse_pos):
-                    print(f"ACCEPT CHALLENGE - Showing tablet for Level {level_num}!")
+                    print(f"ACCEPT CHALLENGE - Showing msg screen for Level {level_num}!")
                     selected_level = level_num
-                    state = "tablet"
+                    state = "msg_screen"
+                    msg_screen_start_time = pygame.time.get_ticks()
                     condition_state = None
                 elif exit_rect.collidepoint(mouse_pos):
                     print(f"EXIT - Back to level selection")
@@ -324,22 +334,33 @@ while True:
                         warning_timer = pygame.time.get_ticks()
                         print(f"Level {i+1} LOCKED! Complete Level {levels_completed+1} first")
 
-        elif state == "tablet" and event.type == pygame.MOUSEBUTTONDOWN:
+        elif state == "msg_screen" and event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
-            back_rect = pygame.Rect(20, 20, 150, 100)  # Updated size
+            back_rect = pygame.Rect(20, 20, 150, 100)  # Back to top left
             if back_rect.collidepoint(mouse_pos):
-                # Go back to condition screen
-                condition_state = f"condition{selected_level}"
-                state = "home"
-                print(f"Back to condition screen for Level {selected_level}")
-            else:
-                # Any other click starts the level
-                print(f"Starting Level {selected_level}!")
-                # For demo: "complete" the level and unlock next one
-                if levels_completed < selected_level - 1:
-                    levels_completed = selected_level - 1
+                # Go back to level selection
                 state = "home"
                 selected_level = None
+                print(f"Back to level selection")
+
+        elif state == "notif_screen" and event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            back_rect = pygame.Rect(20, 20, 150, 100)
+            if back_rect.collidepoint(mouse_pos):
+                state = "home"
+                selected_level = None
+                print(f"Back to level selection from notif_screen")
+            notif_message_rect = pygame.Rect(1180, 506, 336, 274)
+            if notif_message_rect.collidepoint(mouse_pos):
+                state = "customer_screen"
+                print("Transitioning to customer screen")
+
+    # Check for msg_screen timer
+    if state == "msg_screen":
+        current_time = pygame.time.get_ticks()
+        if current_time - msg_screen_start_time > 3000:  # 3 seconds
+            state = "notif_screen"
+            print("Transitioning to notif_screen")
 
     # DRAWING
     if state == "menu":
@@ -418,13 +439,13 @@ while True:
             elapsed = pygame.time.get_ticks() - warning_timer
             if elapsed < 2000:  # 2 seconds
                 draw_warning()
-    elif state == "tablet":
+    elif state == "msg_screen":
         # Draw back button in top left with background for visibility
-        back_btn_scaled = pygame.transform.scale(back_btn, (150, 100))  # Made bigger
-        back_rect = pygame.Rect(20, 20, 150, 100)
+        back_btn_scaled = pygame.transform.scale(back_btn, (150, 100))
+        back_rect = pygame.Rect(20, 20, 150, 100)  # Top left
         # Draw a more visible background to make button stand out
-        bg_surface = pygame.Surface((160, 110), pygame.SRCALPHA)
-        bg_surface.fill((255, 255, 255, 200))  # Semi-transparent white background
+        bg_surface = pygame.Surface((160, 110))
+        bg_surface.fill((255, 255, 255))  # Opaque white background
         pygame.draw.rect(bg_surface, (0, 0, 0), (0, 0, 160, 110), 3, border_radius=10)  # Black border
         screen.blit(bg_surface, (15, 15))
         screen.blit(back_btn_scaled, back_rect)
@@ -432,6 +453,30 @@ while True:
         # Add text label for clarity
         back_text = small_font.render("BACK", True, BLACK)
         screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.bottom + 5))
+
+    elif state == "notif_screen":
+        # Draw the notif screen background
+        screen.blit(notif_bg, (0, 0))
+
+        # Draw back button in top left with background for visibility
+        back_btn_scaled = pygame.transform.scale(back_btn, (150, 100))
+        back_rect = pygame.Rect(20, 20, 150, 100)
+        bg_surface = pygame.Surface((160, 110))
+        bg_surface.fill((255, 255, 255))  # Opaque white background
+        pygame.draw.rect(bg_surface, (0, 0, 0), (0, 0, 160, 110), 3, border_radius=10)
+        screen.blit(bg_surface, (15, 15))
+        screen.blit(back_btn_scaled, back_rect)
+        
+        back_text = small_font.render("BACK", True, BLACK)
+        screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.bottom + 5))
+
+    elif state == "customer_screen":
+        # Placeholder customer screen; replace with your background image later
+        screen.fill((230, 230, 250))
+        customer_text = font.render("Customer Screen", True, BLACK)
+        screen.blit(customer_text, (WIDTH//2 - customer_text.get_width()//2, HEIGHT//2 - 80))
+        hint_text = small_font.render("Replace this with your customer background later", True, BLACK)
+        screen.blit(hint_text, (WIDTH//2 - hint_text.get_width()//2, HEIGHT//2 + 40))
 
     pygame.display.update()
     clock.tick(60)
