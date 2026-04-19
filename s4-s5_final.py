@@ -8,6 +8,10 @@ import sys
 import random
 
 pygame.init()
+pygame.mixer.init()
+pygame.mixer.music.load("Music/angels_pizzeriamusic.mp3")
+pygame.mixer.music.set_volume(1.0)
+pygame.mixer.music.play(-1)  # Loop indefinitely
 
 # Screen
 WIDTH, HEIGHT = 1920, 1080
