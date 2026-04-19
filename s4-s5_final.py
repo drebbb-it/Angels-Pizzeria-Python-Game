@@ -60,6 +60,9 @@ try:
 
     main_kitchen_bg = pygame.image.load("background_screen/main_kitchen.png")
     main_kitchen_bg = pygame.transform.scale(main_kitchen_bg, (WIDTH, HEIGHT))
+
+    oven_bg = pygame.image.load("Ingredients/oven_pizzascreen.png")
+    oven_bg = pygame.transform.scale(oven_bg, (WIDTH, HEIGHT))
     
     customer_images = {}
     customer_images["c1"] = pygame.image.load("customers/c1.png")
@@ -96,7 +99,7 @@ try:
 
 except pygame.error as e:
     print(f"Error loading image: {e}")
-    menu_bg = register_bg = hello_bg = loading_bg = level_bg = msg_bg = notif_bg = main_kitchen_bg = c1_bg = pygame.Surface((WIDTH, HEIGHT))
+    menu_bg = register_bg = hello_bg = loading_bg = level_bg = msg_bg = notif_bg = main_kitchen_bg = oven_bg = c1_bg = pygame.Surface((WIDTH, HEIGHT))
     condition_images = [pygame.Surface((800, 500)) for _ in range(5)]
     customer_symbol = time_symbol = pygame.Surface((100, 100))
     accept_btn = pygame.Surface((280, 85))
@@ -397,6 +400,8 @@ while True:
         screen.blit(notif_bg, (0, 0))
     elif state == "kitchen_screen":
         screen.blit(main_kitchen_bg, (0, 0))
+    elif state == "oven_screen":
+        screen.blit(main_kitchen_bg, (0, 0))
     elif state == "customer_screen":
         current_customer_key = customer_queue[current_customer_index]
         screen.blit(customer_images[current_customer_key], (0, 0))
@@ -499,10 +504,19 @@ while True:
                 button_width,
                 button_height
             )
+            # Define oven rectangle under the bell pepper button (index 1)
+            oven_rect = pygame.Rect(
+                x_start + 1 * (button_width + button_spacing),
+                y_start + button_height + 50,  # Below the button with some spacing
+                button_width,
+                100  # Height of the oven area
+            )
             if kitchen_exit_rect.collidepoint(mouse_pos):
                 state = "home"
                 kitchen_info_active = False
                 kitchen_selected_ingredient = None
+            elif oven_rect.collidepoint(mouse_pos):
+                state = "oven_screen"
             else:
                 kitchen_button_rects = []
                 for col in range(8):
@@ -527,6 +541,20 @@ while True:
                             ingredient_stack.pop()
                         kitchen_selected_ingredient = ingredient_stack[-1] if ingredient_stack else None
                         kitchen_info_active = True
+
+        elif state == "oven_screen" and event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            # Calculate oven window position
+            oven_width = 800
+            oven_height = 600
+            oven_x = (WIDTH - oven_width) // 2
+            oven_y = (HEIGHT - oven_height) // 2
+            oven_window_rect = pygame.Rect(oven_x, oven_y, oven_width, oven_height)
+            oven_exit_rect = pygame.Rect(WIDTH - 140, 20, 120, 80)
+            
+            # If clicking on exit button or outside the window, go back
+            if oven_exit_rect.collidepoint(mouse_pos) or not oven_window_rect.collidepoint(mouse_pos):
+                state = "kitchen_screen"
 
     if state == "msg_screen":
         current_time = pygame.time.get_ticks()
@@ -671,6 +699,26 @@ while True:
         stack_text = small_font.render(stack_label, True, BLACK)
         stack_rect = stack_text.get_rect(center=(WIDTH//2, y_start - 35))
         screen.blit(stack_text, stack_rect)
+
+    elif state == "oven_screen":
+        # Create darkened overlay
+        overlay = pygame.Surface((WIDTH, HEIGHT))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        screen.blit(overlay, (0, 0))
+        
+        # Draw oven window in center
+        oven_width = 800
+        oven_height = 600
+        oven_x = (WIDTH - oven_width) // 2
+        oven_y = (HEIGHT - oven_height) // 2
+        oven_scaled = pygame.transform.scale(oven_bg, (oven_width, oven_height))
+        screen.blit(oven_scaled, (oven_x, oven_y))
+        
+        # Draw exit button in top right
+        exit_scaled = pygame.transform.scale(exit_btn, (120, 80))
+        oven_exit_rect = pygame.Rect(WIDTH - 140, 20, 120, 80)
+        screen.blit(exit_scaled, oven_exit_rect)
 
     elif state == "customer_screen":
 
