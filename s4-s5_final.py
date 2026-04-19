@@ -21,6 +21,7 @@ order_font = pygame.font.SysFont("opensans", 25)
 small_font = pygame.font.SysFont("arial", 70)
 condition_font = pygame.font.SysFont("courier new", 18)
 info_font = pygame.font.SysFont("arial", 18)
+button_font = pygame.font.SysFont("arial", 28)
 
 # Colors
 WHITE = (255, 255, 255)
@@ -54,7 +55,7 @@ try:
     notif_bg = pygame.transform.scale(notif_bg, (WIDTH, HEIGHT))
 
     main_kitchen_bg = pygame.image.load("background_screen/main_kitchen.png")
-    main_kitchen_bg = pygame.transform.scale(main_kitchen_bg, (1456, 816))
+    main_kitchen_bg = pygame.transform.scale(main_kitchen_bg, (WIDTH, HEIGHT))
     
     customer_images = {}
     customer_images["c1"] = pygame.image.load("customers/c1.png")
@@ -239,7 +240,9 @@ customer_timer = 0
 CUSTOMER_SCREEN_DURATION = 3000
 current_customer_order_ingredients = []
 kitchen_info_active = False
-AVAILABLE_INGREDIENTS = ["pepperoni", "bell pepper", "olives", "mushroom", "cheese", "beef", "pineapple", "bacon"]
+kitchen_selected_ingredient = None
+KITCHEN_INGREDIENT_BUTTONS = ["pepperoni", "bell pepper", "cheese", "bacon", "olives", "beef", "pineapple", "mushroom"]
+kitchen_button_rects = []
 
 level_data = {
     1: {"customers": "3 customers", "time": "30 seconds", "instruction": "Serve 3 customers in 30 seconds!\nYou might unlock a kitchen tool after finishing this level."},
@@ -480,12 +483,19 @@ while True:
         elif state == "kitchen_screen" and event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
             kitchen_exit_rect = pygame.Rect(20, 20, 120, 80)
-            kitchen_ingredient_rect = pygame.Rect(WIDTH//2 - 180, 40, 360, 80)
             if kitchen_exit_rect.collidepoint(mouse_pos):
                 state = "home"
                 kitchen_info_active = False
-            elif kitchen_ingredient_rect.collidepoint(mouse_pos):
-                kitchen_info_active = not kitchen_info_active
+                kitchen_selected_ingredient = None
+            else:
+                for index, button_rect in enumerate(kitchen_button_rects):
+                    if button_rect.collidepoint(mouse_pos):
+                        clicked_ingredient = KITCHEN_INGREDIENT_BUTTONS[index]
+                        if kitchen_selected_ingredient == clicked_ingredient:
+                            kitchen_selected_ingredient = None
+                        else:
+                            kitchen_selected_ingredient = clicked_ingredient
+                        break
 
     if state == "msg_screen":
         current_time = pygame.time.get_ticks()
@@ -582,22 +592,58 @@ while True:
         kitchen_exit_rect = pygame.Rect(20, 20, 120, 80)
         screen.blit(exit_scaled, kitchen_exit_rect)
 
+        # Draw eight ingredient buttons below the rat
+        button_width = 210
+        button_height = 70
+        button_spacing = 20
+        columns = 4
+        rows = 2
+        x_start = (WIDTH - (columns * button_width + (columns - 1) * button_spacing)) // 2
+        y_start = HEIGHT//2 + 120
+        kitchen_button_rects = []
+        for row in range(rows):
+            for col in range(columns):
+                index = row * columns + col
+                label = KITCHEN_INGREDIENT_BUTTONS[index]
+                rect = pygame.Rect(
+                    x_start + col * (button_width + button_spacing),
+                    y_start + row * (button_height + button_spacing),
+                    button_width,
+                    button_height
+                )
+                kitchen_button_rects.append(rect)
+                fill_color = (255, 255, 255)
+                border_color = BLACK
+                if kitchen_selected_ingredient == label:
+                    fill_color = (220, 220, 255)
+                    border_color = (0, 0, 180)
+                pygame.draw.rect(screen, fill_color, rect, border_radius=15)
+                pygame.draw.rect(screen, border_color, rect, 3, border_radius=15)
+                text_surface = button_font.render(label.title(), True, BLACK)
+                screen.blit(text_surface, (rect.centerx - text_surface.get_width()//2,
+                                           rect.centery - text_surface.get_height()//2))
+
+        if kitchen_selected_ingredient:
+            selected_text = small_font.render(f"Selected: {kitchen_selected_ingredient.title()}", True, BLACK)
+            selected_rect = selected_text.get_rect(center=(WIDTH//2, y_start - 20))
+            screen.blit(selected_text, selected_rect)
+
     elif state == "customer_screen":
+
         now = pygame.time.get_ticks()
         # Ensure list is not empty and index is within bounds
         if now - customer_timer > CUSTOMER_SCREEN_DURATION:
-            current_customer_index += 1
-            customer_timer = now
+            if current_customer_index < len(customer_queue) - 1:
+                current_customer_index += 1
+                customer_timer = pygame.time.get_ticks()
+            else:
+                if selected_level is not None:
+                    levels_completed = max(levels_completed, selected_level)
+                state = "kitchen_screen"
+                customer_timer = now
 
-    # ✅ ADD THIS BLOCK HERE
-        if current_customer_index >= len(customer_queue):
-          if selected_level is not None:
-            levels_completed = max(levels_completed, selected_level)
+    # Removed the old block that automatically advanced past the entire queue
 
-          state = "kitchen_screen"
-          selected_level = None
-          condition_state = None
-          current_customer_index = 0
             
             
     pygame.display.update()
