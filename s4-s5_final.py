@@ -484,11 +484,32 @@ while True:
         elif state == "kitchen_screen" and event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
             kitchen_exit_rect = pygame.Rect(20, 20, 120, 80)
+            button_width = 180
+            button_height = 65
+            button_spacing = 15
+            x_start = (WIDTH - (8 * button_width + 7 * button_spacing)) // 2
+            y_start = HEIGHT//2 - 320
+            remove_button_rect = pygame.Rect(
+                x_start + 7 * (button_width + button_spacing),
+                y_start + button_height + button_spacing,
+                button_width,
+                button_height
+            )
             if kitchen_exit_rect.collidepoint(mouse_pos):
                 state = "home"
                 kitchen_info_active = False
                 kitchen_selected_ingredient = None
             else:
+                kitchen_button_rects = []
+                for col in range(8):
+                    rect = pygame.Rect(
+                        x_start + col * (button_width + button_spacing),
+                        y_start,
+                        button_width,
+                        button_height
+                    )
+                    kitchen_button_rects.append(rect)
+
                 for index, button_rect in enumerate(kitchen_button_rects):
                     if button_rect.collidepoint(mouse_pos):
                         clicked_ingredient = KITCHEN_INGREDIENT_BUTTONS[index]
@@ -496,6 +517,12 @@ while True:
                         kitchen_selected_ingredient = clicked_ingredient
                         kitchen_info_active = True
                         break
+                else:
+                    if remove_button_rect.collidepoint(mouse_pos):
+                        if ingredient_stack:
+                            ingredient_stack.pop()
+                        kitchen_selected_ingredient = ingredient_stack[-1] if ingredient_stack else None
+                        kitchen_info_active = True
 
     if state == "msg_screen":
         current_time = pygame.time.get_ticks()
@@ -622,6 +649,19 @@ while True:
             text_surface = button_font.render(label.title(), True, text_color)
             screen.blit(text_surface, (rect.centerx - text_surface.get_width()//2,
                                        rect.centery - text_surface.get_height()//2))
+
+        # Add a remove-last-ingredient button below the mushroom button
+        remove_button_rect = pygame.Rect(
+            x_start + 7 * (button_width + button_spacing),
+            y_start + button_height + button_spacing,
+            button_width,
+            button_height
+        )
+        pygame.draw.rect(screen, (200, 64, 64), remove_button_rect, border_radius=15)
+        pygame.draw.rect(screen, (120, 30, 30), remove_button_rect, 3, border_radius=15)
+        remove_text = button_font.render("Remove", True, WHITE)
+        screen.blit(remove_text, (remove_button_rect.centerx - remove_text.get_width()//2,
+                                  remove_button_rect.centery - remove_text.get_height()//2))
 
         stack_label = "Stack: " + ", ".join(ingredient_stack[-8:]) if ingredient_stack else "Stack: empty"
         stack_text = small_font.render(stack_label, True, BLACK)
