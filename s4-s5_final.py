@@ -715,9 +715,28 @@ while True:
         screen.blit(remove_text, (remove_button_rect.centerx - remove_text.get_width()//2,
                                   remove_button_rect.centery - remove_text.get_height()//2))
 
-        stack_label = "Stack: " + ", ".join(ingredient_stack[-8:]) if ingredient_stack else "Stack: empty"
-        stack_text = small_font.render(stack_label, True, BLACK)
-        stack_rect = stack_text.get_rect(center=(WIDTH//2, y_start - 35))
+        # Create a pretty stack display at the top of buttons
+        if ingredient_stack:
+            # Format ingredients with proper capitalization
+            formatted_ingredients = [ing.title() for ing in ingredient_stack[-8:]]
+            stack_label = "Pizza Stack: " + " + ".join(formatted_ingredients)
+        else:
+            stack_label = "Pizza Stack: Empty"
+        
+        # Use smaller font for the stack text
+        stack_text = button_font.render(stack_label, True, BLACK)
+        stack_bg_width = stack_text.get_width() + 30
+        stack_bg_height = stack_text.get_height() + 12
+        stack_bg_x = WIDTH//2 - stack_bg_width//2
+        stack_bg_y = y_start - 25  # Position at the top of the buttons
+        
+        # Draw background box with rounded corners (smaller)
+        stack_bg_rect = pygame.Rect(stack_bg_x, stack_bg_y, stack_bg_width, stack_bg_height)
+        pygame.draw.rect(screen, (255, 248, 220), stack_bg_rect, border_radius=10)  # Cream background
+        pygame.draw.rect(screen, (139, 69, 19), stack_bg_rect, 2, border_radius=10)  # Brown border
+        
+        # Center the text in the background box
+        stack_rect = stack_text.get_rect(center=(stack_bg_rect.centerx, stack_bg_rect.centery))
         screen.blit(stack_text, stack_rect)
 
     elif state == "oven_screen":
