@@ -54,7 +54,7 @@ try:
     notif_bg = pygame.transform.scale(notif_bg, (WIDTH, HEIGHT))
 
     main_kitchen_bg = pygame.image.load("background_screen/main_kitchen.png")
-    main_kitchen_bg = pygame.transform.scale(main_kitchen_bg, (WIDTH, HEIGHT))
+    main_kitchen_bg = pygame.transform.scale(main_kitchen_bg, (1456, 816))
     
     customer_images = {}
     customer_images["c1"] = pygame.image.load("customers/c1.png")
@@ -135,14 +135,6 @@ SCALED_WIDTH = 0
 SCALED_HEIGHT = 0
 loading_start_time = 0
 loading_time = 8500
-
-level_data = {
-    1: {"customers": "3 customers", "time": "30 seconds", "instruction": "Serve 3 customers in 30 seconds!\nYou might unlock a kitchen tool after finishing this level."},
-    2: {"customers": "3 customers", "time": "45 seconds", "instruction": "Serve 3 customers in 45 seconds!\nYou might unlock a kitchen tool after finishing this level."},
-    3: {"customers": "5 customers", "time": "55 seconds", "instruction": "Serve 5 customers in 55 seconds!\nYou might unlock a kitchen tool after finishing this level."},
-    4: {"customers": "5 customers", "time": "65 seconds", "instruction": "Serve 5 customers in 65 seconds!\nYou might unlock a kitchen tool after finishing this level."},
-    5: {"customers": "1 customer", "time": "60 seconds", "instruction": "Ultimate Challenge!\nServe the Boss!"}
-}
 
 def draw_text_outline(text, font, text_color, outline_color, x, y):
     outline_range = 4
@@ -245,6 +237,50 @@ customer_queue = []
 current_customer_index = 0
 customer_timer = 0
 CUSTOMER_SCREEN_DURATION = 3000
+current_customer_order_ingredients = []
+kitchen_info_active = False
+AVAILABLE_INGREDIENTS = ["pepperoni", "bell pepper", "olives", "mushroom", "cheese", "beef", "pineapple", "bacon"]
+
+level_data = {
+    1: {"customers": "3 customers", "time": "30 seconds", "instruction": "Serve 3 customers in 30 seconds!\nYou might unlock a kitchen tool after finishing this level."},
+    2: {"customers": "3 customers", "time": "45 seconds", "instruction": "Serve 3 customers in 45 seconds!\nYou might unlock a kitchen tool after finishing this level."},
+    3: {"customers": "5 customers", "time": "55 seconds", "instruction": "Serve 5 customers in 55 seconds!\nYou might unlock a kitchen tool after finishing this level."},
+    4: {"customers": "5 customers", "time": "65 seconds", "instruction": "Serve 5 customers in 65 seconds!\nYou might unlock a kitchen tool after finishing this level."},
+    5: {"customers": "1 customer", "time": "60 seconds", "instruction": "Ultimate Challenge!\nServe the Boss!"}
+}
+
+customer_ingredient_map = {
+    1: {
+        "c1": ["cheese", "bacon", "mushroom"],
+        "c2": ["pepperoni", "cheese"],
+        "c3": ["beef", "pineapple"]
+    },
+    2: {
+        "c1": ["pepperoni", "bell pepper", "olives", "mushroom", "cheese", "beef", "bacon"],
+        "c2": ["cheese"],
+        "c3": ["pepperoni", "olives"],
+        "c4": ["beef", "bell pepper", "mushroom", "cheese"],
+        "c5": ["cheese", "bell pepper"]
+    },
+    3: {
+        "c1": ["bacon", "pineapple"],
+        "c2": ["bacon", "cheese"],
+        "c3": ["pepperoni", "olives"],
+        "c4": ["pepperoni", "mushroom", "bell pepper"],
+        "c5": ["pepperoni", "olives", "mushroom", "cheese", "beef", "pineapple", "bacon"]
+    },
+    4: {
+        "c1": ["bacon", "pineapple"],
+        "c2": ["bacon", "cheese"],
+        "c3": ["pepperoni", "mushroom", "bell pepper"],
+        "c4": ["beef", "pineapple"],
+        "c5": ["pepperoni", "cheese", "beef", "pineapple", "bacon", "olives", "mushroom"]
+    },
+    5: {
+        "boss": ["pepperoni", "bell pepper", "olives", "mushroom", "cheese", "beef", "pineapple", "bacon"]
+    }
+}
+
 
 def start_level(level_num):
     # ADD 'current_level' to your global variables here:
@@ -307,8 +343,10 @@ def show_customer_ui(customer_key):
         }
     }
 
+    global current_customer_order_ingredients
     level_orders = templates.get(current_level, {})
     text = level_orders.get(customer_key, "Unknown order.")
+    current_customer_order_ingredients = customer_ingredient_map.get(current_level, {}).get(customer_key, [])
 
     # --- UPDATED MULTI-LINE RENDERING LOGIC ---
     # Ensure there are actually newlines in your strings in the dictionary above
@@ -441,9 +479,13 @@ while True:
 
         elif state == "kitchen_screen" and event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
-            back_rect = pygame.Rect(20, 20, 150, 100)
-            if back_rect.collidepoint(mouse_pos):
+            kitchen_exit_rect = pygame.Rect(20, 20, 120, 80)
+            kitchen_ingredient_rect = pygame.Rect(WIDTH//2 - 180, 40, 360, 80)
+            if kitchen_exit_rect.collidepoint(mouse_pos):
                 state = "home"
+                kitchen_info_active = False
+            elif kitchen_ingredient_rect.collidepoint(mouse_pos):
+                kitchen_info_active = not kitchen_info_active
 
     if state == "msg_screen":
         current_time = pygame.time.get_ticks()
@@ -536,15 +578,9 @@ while True:
         screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.bottom + 5))
 
     elif state == "kitchen_screen":
-        back_btn_scaled = pygame.transform.scale(back_btn, (150, 100))
-        back_rect = pygame.Rect(20, 20, 150, 100)
-        bg_surface = pygame.Surface((160, 110))
-        bg_surface.fill((255, 255, 255))
-        pygame.draw.rect(bg_surface, (0, 0, 0), (0, 0, 160, 110), 3, border_radius=10)
-        screen.blit(bg_surface, (15, 15))
-        screen.blit(back_btn_scaled, back_rect)
-        back_text = small_font.render("BACK", True, BLACK)
-        screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.bottom + 5))
+        exit_scaled = pygame.transform.scale(exit_btn, (120, 80))
+        kitchen_exit_rect = pygame.Rect(20, 20, 120, 80)
+        screen.blit(exit_scaled, kitchen_exit_rect)
 
     elif state == "customer_screen":
         now = pygame.time.get_ticks()
