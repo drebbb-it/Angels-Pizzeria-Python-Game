@@ -52,6 +52,9 @@ try:
 
     notif_bg = pygame.image.load("background_screen/notif_screen.png")
     notif_bg = pygame.transform.scale(notif_bg, (WIDTH, HEIGHT))
+
+    main_kitchen_bg = pygame.image.load("background_screen/main_kitchen.png")
+    main_kitchen_bg = pygame.transform.scale(main_kitchen_bg, (WIDTH, HEIGHT))
     
     customer_images = {}
     customer_images["c1"] = pygame.image.load("customers/c1.png")
@@ -88,7 +91,7 @@ try:
 
 except pygame.error as e:
     print(f"Error loading image: {e}")
-    menu_bg = register_bg = hello_bg = loading_bg = level_bg = msg_bg = notif_bg = c1_bg = pygame.Surface((WIDTH, HEIGHT))
+    menu_bg = register_bg = hello_bg = loading_bg = level_bg = msg_bg = notif_bg = main_kitchen_bg = c1_bg = pygame.Surface((WIDTH, HEIGHT))
     condition_images = [pygame.Surface((800, 500)) for _ in range(5)]
     customer_symbol = time_symbol = pygame.Surface((100, 100))
     accept_btn = pygame.Surface((280, 85))
@@ -346,6 +349,8 @@ while True:
         screen.blit(msg_bg, (0, 0))
     elif state == "notif_screen":
         screen.blit(notif_bg, (0, 0))
+    elif state == "kitchen_screen":
+        screen.blit(main_kitchen_bg, (0, 0))
     elif state == "customer_screen":
         current_customer_key = customer_queue[current_customer_index]
         screen.blit(customer_images[current_customer_key], (0, 0))
@@ -433,6 +438,12 @@ while True:
             if notif_message_rect.collidepoint(mouse_pos):
                 if selected_level:
                     start_level(selected_level)  # start customer sequence for chosen level
+
+        elif state == "kitchen_screen" and event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            back_rect = pygame.Rect(20, 20, 150, 100)
+            if back_rect.collidepoint(mouse_pos):
+                state = "home"
 
     if state == "msg_screen":
         current_time = pygame.time.get_ticks()
@@ -524,6 +535,17 @@ while True:
         back_text = small_font.render("BACK", True, BLACK)
         screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.bottom + 5))
 
+    elif state == "kitchen_screen":
+        back_btn_scaled = pygame.transform.scale(back_btn, (150, 100))
+        back_rect = pygame.Rect(20, 20, 150, 100)
+        bg_surface = pygame.Surface((160, 110))
+        bg_surface.fill((255, 255, 255))
+        pygame.draw.rect(bg_surface, (0, 0, 0), (0, 0, 160, 110), 3, border_radius=10)
+        screen.blit(bg_surface, (15, 15))
+        screen.blit(back_btn_scaled, back_rect)
+        back_text = small_font.render("BACK", True, BLACK)
+        screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.bottom + 5))
+
     elif state == "customer_screen":
         now = pygame.time.get_ticks()
         # Ensure list is not empty and index is within bounds
@@ -536,10 +558,11 @@ while True:
           if selected_level is not None:
             levels_completed = max(levels_completed, selected_level)
 
-          state = "home"
+          state = "kitchen_screen"
           selected_level = None
           condition_state = None
           current_customer_index = 0
+            
             
     pygame.display.update()
     clock.tick(60)
