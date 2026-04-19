@@ -6,6 +6,7 @@
 import pygame 
 import sys
 import random
+import math
 
 pygame.init()
 pygame.mixer.init()
@@ -63,6 +64,8 @@ try:
 
     oven_bg = pygame.image.load("Ingredients/oven_pizzascreen.png")
     oven_bg = pygame.transform.scale(oven_bg, (WIDTH, HEIGHT))
+
+    cheese_pizza_base = pygame.image.load("Ingredients/cheese_pizza.png")
     
     customer_images = {}
     customer_images["c1"] = pygame.image.load("customers/c1.png")
@@ -97,9 +100,25 @@ try:
     level_images.append(pygame.image.load("conditions/level4.png").convert_alpha())
     level_images.append(pygame.image.load("conditions/level5.png").convert_alpha())
 
+    # Load ingredient images
+    ingredient_images = {}
+    ingredient_images["pepperoni"] = pygame.image.load("Ingredients/pepperoni_drag.png").convert_alpha()
+    ingredient_images["bell pepper"] = pygame.image.load("Ingredients/bellpepper_drag.png").convert_alpha()
+    ingredient_images["cheese"] = pygame.image.load("Ingredients/cheese_pizza.png").convert_alpha()
+    ingredient_images["bacon"] = pygame.image.load("Ingredients/bacon_drag.png").convert_alpha()
+    ingredient_images["beef"] = pygame.image.load("Ingredients/beef_drag.png").convert_alpha()
+    ingredient_images["pineapple"] = pygame.image.load("Ingredients/pineapple_drag.png").convert_alpha()
+    ingredient_images["mushroom"] = pygame.image.load("Ingredients/mushroom_drag.png").convert_alpha()
+    # For olives, use mushroom as fallback if not available
+    try:
+        ingredient_images["olives"] = pygame.image.load("Ingredients/olives_drag.png").convert_alpha()
+    except:
+        ingredient_images["olives"] = ingredient_images["mushroom"]
+
 except pygame.error as e:
     print(f"Error loading image: {e}")
     menu_bg = register_bg = hello_bg = loading_bg = level_bg = msg_bg = notif_bg = main_kitchen_bg = oven_bg = c1_bg = pygame.Surface((WIDTH, HEIGHT))
+    cheese_pizza_base = pygame.Surface((100, 100))
     condition_images = [pygame.Surface((800, 500)) for _ in range(5)]
     customer_symbol = time_symbol = pygame.Surface((100, 100))
     accept_btn = pygame.Surface((280, 85))
@@ -109,6 +128,7 @@ except pygame.error as e:
     level_images = [pygame.Surface((211, 130)) for _ in range(5)]
     for img in level_images:
         img.fill(YELLOW)
+    ingredient_images = {}
 
 LEVEL_WIDTH = int(WIDTH * 0.11)
 LEVEL_HEIGHT = 130
@@ -712,8 +732,37 @@ while True:
         oven_height = 600
         oven_x = (WIDTH - oven_width) // 2
         oven_y = (HEIGHT - oven_height) // 2
-        oven_scaled = pygame.transform.scale(oven_bg, (oven_width, oven_height))
-        screen.blit(oven_scaled, (oven_x, oven_y))
+        
+        # Determine which pizza base to use
+        has_cheese = "cheese" in ingredient_stack
+        pizza_bg = cheese_pizza_base if has_cheese else oven_bg
+        pizza_scaled = pygame.transform.scale(pizza_bg, (oven_width, oven_height))
+        screen.blit(pizza_scaled, (oven_x, oven_y))
+        
+# Draw ingredients scattered on the pizza (excluding cheese)
+        non_cheese_ingredients = [ing for ing in ingredient_stack if ing != "cheese"]
+        if non_cheese_ingredients:
+            pizza_center_x = oven_x + oven_width // 2
+            pizza_center_y = oven_y + oven_height // 2
+            ingredient_size = 64
+            
+            # Add multiple visible copies per clicked ingredient
+            display_ingredients = []
+            for ingredient in set(non_cheese_ingredients):
+                count = non_cheese_ingredients.count(ingredient)
+                copies = min(count * 3, 12)
+                display_ingredients.extend([ingredient] * copies)
+
+            total_icons = len(display_ingredients)
+            for idx, ingredient in enumerate(display_ingredients):
+                if ingredient in ingredient_images:
+                    # Use deterministic scatter positions so icons are stable across frames
+                    angle = (idx * 2.61803398875) % (2 * math.pi)
+                    radius = 90 + ((idx * 37) % 70)
+                    x = pizza_center_x + radius * math.cos(angle)
+                    y = pizza_center_y + radius * math.sin(angle)
+                    ingredient_img = pygame.transform.scale(ingredient_images[ingredient], (ingredient_size, ingredient_size))
+                    screen.blit(ingredient_img, (x - ingredient_size // 2, y - ingredient_size // 2))
         
         # Draw exit button in top right
         exit_scaled = pygame.transform.scale(exit_btn, (120, 80))
