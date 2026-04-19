@@ -7,6 +7,7 @@ import pygame
 import sys
 import random
 import math
+from collections import Counter
 
 pygame.init()
 pygame.mixer.init()
@@ -143,6 +144,10 @@ for img in level_images:
 # ✅ FIXED: Level 1 available by default (0 = level 1 completed)
 levels_completed = 0 
 selected_level = None
+level_finished = False
+level_start_time = 0
+level_duration = 0
+level_failed = False
 msg_screen_start_time = 0
 
 state = "menu"
@@ -173,6 +178,14 @@ def draw_text_outline(text, font, text_color, outline_color, x, y):
                 screen.blit(outline_text, (x + dx, y + dy))
     main_text = font.render(text, True, text_color)
     screen.blit(main_text, (x, y))
+
+
+def is_order_complete(order_ingredients=None):
+    if order_ingredients is None:
+        order_ingredients = current_customer_order_ingredients
+    if not order_ingredients:
+        return False
+    return Counter(ingredient_stack) == Counter(order_ingredients)
 
 def draw_condition_screen(level_num):
     overlay = pygame.Surface((WIDTH, HEIGHT))
@@ -315,9 +328,13 @@ customer_ingredient_map = {
 
 def start_level(level_num):
     # ADD 'current_level' to your global variables here:
-    global customer_queue, current_customer_index, customer_timer, state, current_level
+    global customer_queue, current_customer_index, customer_timer, state, current_level, level_finished, level_start_time, level_duration, level_failed
     
     current_level = level_num # <-- Track the level so the UI knows which orders to use
+    level_finished = False
+    level_failed = False
+    level_start_time = 0
+    level_duration = int(level_data[level_num]["time"].split()[0]) if level_num in level_data else 60
 
     # Create the queue based on level (Your existing code stays exactly the same)
     if level_num == 1:
@@ -426,6 +443,9 @@ while True:
         current_customer_key = customer_queue[current_customer_index]
         screen.blit(customer_images[current_customer_key], (0, 0))
         show_customer_ui(current_customer_key)
+        exit_scaled = pygame.transform.scale(exit_btn, (120, 80))
+        exit_rect = pygame.Rect(150, 20, 120, 80)
+        screen.blit(exit_scaled, exit_rect)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -491,18 +511,16 @@ while True:
         elif state == "msg_screen" and event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
             back_rect = pygame.Rect(20, 20, 150, 100)
-            msg_exit_rect = pygame.Rect(WIDTH//2 - 60, 50, 120, 80)
-            if back_rect.collidepoint(mouse_pos):
-                state = "home"
-                selected_level = None
-            elif msg_exit_rect.collidepoint(mouse_pos):
+            exit_rect = pygame.Rect(40, 20, 120, 80)
+            if back_rect.collidepoint(mouse_pos) or exit_rect.collidepoint(mouse_pos):
                 state = "home"
                 selected_level = None
 
         elif state == "notif_screen" and event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
             back_rect = pygame.Rect(20, 20, 150, 100)
-            if back_rect.collidepoint(mouse_pos):
+            exit_rect = pygame.Rect(40, 20, 120, 80)
+            if back_rect.collidepoint(mouse_pos) or exit_rect.collidepoint(mouse_pos):
                 state = "home"
                 selected_level = None
             notif_message_rect = pygame.Rect(1180, 506, 336, 274)
@@ -510,9 +528,17 @@ while True:
                 if selected_level:
                     start_level(selected_level)  # start customer sequence for chosen level
 
+        elif state == "customer_screen" and event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            exit_rect = pygame.Rect(40, 20, 120, 80)
+            if exit_rect.collidepoint(mouse_pos):
+                state = "home"
+                selected_level = None
+                customer_timer = 0
+                current_customer_index = 0
+
         elif state == "kitchen_screen" and event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
-            kitchen_exit_rect = pygame.Rect(20, 20, 120, 80)
             button_width = 180
             button_height = 65
             button_spacing = 15
@@ -531,8 +557,19 @@ while True:
                 button_width,
                 100  # Height of the oven area
             )
-            if kitchen_exit_rect.collidepoint(mouse_pos):
+            return_button_rect = pygame.Rect(WIDTH - 220, HEIGHT - 120, 200, 80)
+            failed_back_rect = pygame.Rect(WIDTH//2 - 75, HEIGHT//2 + 100, 150, 100)
+            if level_failed:
+                if failed_back_rect.collidepoint(mouse_pos):
+                    state = "home"
+                    selected_level = None
+                    kitchen_info_active = False
+                    kitchen_selected_ingredient = None
+                    level_failed = False
+                continue
+            if return_button_rect.collidepoint(mouse_pos) and selected_level is not None and level_finished:
                 state = "home"
+                selected_level = None
                 kitchen_info_active = False
                 kitchen_selected_ingredient = None
             elif oven_rect.collidepoint(mouse_pos):
@@ -564,16 +601,39 @@ while True:
 
         elif state == "oven_screen" and event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
-            # Calculate oven window position
+            # Calculate oven window position and tab area
             oven_width = 800
             oven_height = 600
             oven_x = (WIDTH - oven_width) // 2
             oven_y = (HEIGHT - oven_height) // 2
-            oven_window_rect = pygame.Rect(oven_x, oven_y, oven_width, oven_height)
+            tab_height = 120
+            oven_window_rect = pygame.Rect(oven_x, oven_y, oven_width, oven_height + tab_height)
             oven_exit_rect = pygame.Rect(WIDTH - 140, 20, 120, 80)
-            
-            # If clicking on exit button or outside the window, go back
-            if oven_exit_rect.collidepoint(mouse_pos) or not oven_window_rect.collidepoint(mouse_pos):
+
+            current_customer_key = customer_queue[current_customer_index] if customer_queue else None
+            current_customer_order_ingredients = customer_ingredient_map.get(current_level, {}).get(current_customer_key, [])
+            order_ready = is_order_complete(current_customer_order_ingredients)
+            order_button_rect = pygame.Rect(oven_x + oven_width - 210, oven_y + oven_height - 140, 170, 60) if order_ready else None
+
+            # If clicking on the done button when ready, move to next customer or finish level
+            return_button_rect = pygame.Rect(WIDTH - 220, HEIGHT - 120, 200, 80)
+            if order_button_rect and order_button_rect.collidepoint(mouse_pos):
+                ingredient_stack.clear()
+                kitchen_info_active = False
+                kitchen_selected_ingredient = None
+                if customer_queue:
+                    customer_queue.pop(current_customer_index)
+                if customer_queue:
+                    current_customer_index = min(current_customer_index, len(customer_queue) - 1)
+                    customer_timer = pygame.time.get_ticks()
+                    continue
+                else:
+                    if selected_level is not None:
+                        levels_completed = max(levels_completed, selected_level)
+                    level_finished = True
+                    state = "kitchen_screen"
+                    continue
+            elif oven_exit_rect.collidepoint(mouse_pos) or not oven_window_rect.collidepoint(mouse_pos):
                 state = "kitchen_screen"
 
     if state == "msg_screen":
@@ -650,9 +710,10 @@ while True:
         screen.blit(back_btn_scaled, back_rect)
         back_text = small_font.render("BACK", True, BLACK)
         screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.bottom + 5))
-        msg_exit_scaled = pygame.transform.scale(exit_btn, (120, 80))
-        msg_exit_rect = pygame.Rect(WIDTH//2 - 60, 50, 120, 80)
-        screen.blit(msg_exit_scaled, msg_exit_rect)
+
+        exit_scaled = pygame.transform.scale(exit_btn, (120, 80))
+        exit_rect = pygame.Rect(40, 20, 120, 80)
+        screen.blit(exit_scaled, exit_rect)
 
     elif state == "notif_screen":
         screen.blit(notif_bg, (0, 0))
@@ -666,11 +727,11 @@ while True:
         back_text = small_font.render("BACK", True, BLACK)
         screen.blit(back_text, (back_rect.centerx - back_text.get_width()//2, back_rect.bottom + 5))
 
-    elif state == "kitchen_screen":
         exit_scaled = pygame.transform.scale(exit_btn, (120, 80))
-        kitchen_exit_rect = pygame.Rect(20, 20, 120, 80)
-        screen.blit(exit_scaled, kitchen_exit_rect)
+        exit_rect = pygame.Rect(150, 20, 120, 80)
+        screen.blit(exit_scaled, exit_rect)
 
+    elif state == "kitchen_screen":
         # Draw eight ingredient buttons in a single horizontal row above the rat
         button_width = 180
         button_height = 65
@@ -715,6 +776,27 @@ while True:
         screen.blit(remove_text, (remove_button_rect.centerx - remove_text.get_width()//2,
                                   remove_button_rect.centery - remove_text.get_height()//2))
 
+        # Draw the level countdown timer above the mushroom button
+        if selected_level is not None and level_start_time > 0:
+            elapsed = pygame.time.get_ticks() - level_start_time
+            remaining_seconds = max(0, level_duration - elapsed // 1000)
+            if remaining_seconds <= 0:
+                level_failed = True
+
+            timer_width = button_width
+            timer_height = 56
+            timer_rect = pygame.Rect(
+                x_start + 7 * (button_width + button_spacing),
+                y_start - timer_height - 15,
+                timer_width,
+                timer_height
+            )
+            pygame.draw.rect(screen, (210, 188, 138), timer_rect, border_radius=15)
+            pygame.draw.rect(screen, (108, 74, 31), timer_rect, 3, border_radius=15)
+            timer_text = button_font.render(f"Time: {remaining_seconds}s", True, BLACK)
+            screen.blit(timer_text, (timer_rect.centerx - timer_text.get_width()//2,
+                                     timer_rect.centery - timer_text.get_height()//2))
+
         # Create a pretty stack display at the top of buttons
         if ingredient_stack:
             # Format ingredients with proper capitalization
@@ -728,7 +810,7 @@ while True:
         stack_bg_width = stack_text.get_width() + 30
         stack_bg_height = stack_text.get_height() + 12
         stack_bg_x = WIDTH//2 - stack_bg_width//2
-        stack_bg_y = y_start - 25  # Position at the top of the buttons
+        stack_bg_y = y_start - stack_bg_height - 15  # Place above the ingredient buttons
         
         # Draw background box with rounded corners (smaller)
         stack_bg_rect = pygame.Rect(stack_bg_x, stack_bg_y, stack_bg_width, stack_bg_height)
@@ -738,6 +820,44 @@ while True:
         # Center the text in the background box
         stack_rect = stack_text.get_rect(center=(stack_bg_rect.centerx, stack_bg_rect.centery))
         screen.blit(stack_text, stack_rect)
+
+        # Draw return to levels button in bottom right of kitchen screen
+        if selected_level is not None:
+            return_button_rect = pygame.Rect(WIDTH - 220, HEIGHT - 120, 200, 80)
+            if level_finished:
+                pygame.draw.rect(screen, (64, 110, 150), return_button_rect, border_radius=18)
+                pygame.draw.rect(screen, (28, 58, 100), return_button_rect, 4, border_radius=18)
+                button_text = button_font.render("Back to Levels", True, WHITE)
+            else:
+                pygame.draw.rect(screen, (120, 120, 120), return_button_rect, border_radius=18)
+                pygame.draw.rect(screen, (80, 80, 80), return_button_rect, 4, border_radius=18)
+                button_text = button_font.render("Complete level to return", True, (220, 220, 220))
+            screen.blit(button_text, (return_button_rect.centerx - button_text.get_width()//2,
+                                      return_button_rect.centery - button_text.get_height()//2))
+
+        if level_failed:
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            screen.blit(overlay, (0, 0))
+
+            warning_rect = pygame.Rect(WIDTH//2 - 360, HEIGHT//2 - 140, 720, 220)
+            pygame.draw.rect(screen, (245, 245, 245), warning_rect, border_radius=24)
+            pygame.draw.rect(screen, (100, 40, 20), warning_rect, 6, border_radius=24)
+
+            warning_text = "Time's Up! Try Again"
+            warning_surface = font.render(warning_text, True, (150, 20, 20))
+            warning_rect_text = warning_surface.get_rect(center=(WIDTH//2, warning_rect.top + 70))
+            screen.blit(warning_surface, warning_rect_text)
+
+            detail_text = "Your pizza order failed. Return to level select."
+            detail_surface = order_font.render(detail_text, True, BLACK)
+            detail_rect = detail_surface.get_rect(center=(WIDTH//2, warning_rect.top + 120))
+            screen.blit(detail_surface, detail_rect)
+
+            back_button_size = (150, 100)
+            back_button_rect = pygame.Rect(WIDTH//2 - back_button_size[0]//2, warning_rect.bottom + 20, back_button_size[0], back_button_size[1])
+            back_btn_scaled = pygame.transform.scale(back_btn, back_button_size)
+            screen.blit(back_btn_scaled, back_button_rect)
 
     elif state == "oven_screen":
         # Create darkened overlay
@@ -758,37 +878,105 @@ while True:
         pizza_scaled = pygame.transform.scale(pizza_bg, (oven_width, oven_height))
         screen.blit(pizza_scaled, (oven_x, oven_y))
         
-# Draw ingredients scattered on the pizza (excluding cheese)
+        # Draw ingredients in a circle on the pizza (excluding cheese)
         non_cheese_ingredients = [ing for ing in ingredient_stack if ing != "cheese"]
         if non_cheese_ingredients:
             pizza_center_x = oven_x + oven_width // 2
             pizza_center_y = oven_y + oven_height // 2
-            ingredient_size = 64
+            ingredient_size = 60
             
             # Add multiple visible copies per clicked ingredient
             display_ingredients = []
             for ingredient in set(non_cheese_ingredients):
                 count = non_cheese_ingredients.count(ingredient)
-                copies = min(count * 3, 12)
+                copies = min(count * 2, 6)
                 display_ingredients.extend([ingredient] * copies)
 
             total_icons = len(display_ingredients)
             for idx, ingredient in enumerate(display_ingredients):
                 if ingredient in ingredient_images:
-                    # Use deterministic scatter positions so icons are stable across frames
-                    angle = (idx * 2.61803398875) % (2 * math.pi)
+                    # Calculate angle for circular placement
+                    angle = (idx / total_icons) * 2 * math.pi if total_icons > 0 else 0
                     radius = 90 + ((idx * 37) % 70)
-                    x = pizza_center_x + radius * math.cos(angle)
-                    y = pizza_center_y + radius * math.sin(angle)
+                    x = pizza_center_x + radius * math.sin(angle)
+                    y = pizza_center_y - radius * math.cos(angle)
                     ingredient_img = pygame.transform.scale(ingredient_images[ingredient], (ingredient_size, ingredient_size))
                     screen.blit(ingredient_img, (x - ingredient_size // 2, y - ingredient_size // 2))
-        
+
+        # Draw order tab below the oven
+        tab_height = 150
+        tab_rect = pygame.Rect(oven_x, oven_y + oven_height, oven_width, tab_height)
+        pygame.draw.rect(screen, (245, 245, 245), tab_rect, border_radius=20)
+        pygame.draw.rect(screen, (120, 80, 40), tab_rect, 4, border_radius=20)
+
+        current_customer_key = customer_queue[current_customer_index] if customer_queue else None
+        current_customer_order_ingredients = customer_ingredient_map.get(current_level, {}).get(current_customer_key, [])
+        order_items = [item.title() for item in current_customer_order_ingredients]
+
+        # Wrap order text so it fits inside the order tab without overlapping the button
+        max_order_width = oven_width - 240
+        order_lines = []
+        if order_items:
+            current_line = "Order:"
+            remaining = order_items.copy()
+            while remaining and len(order_lines) < 3:
+                ingredient = remaining.pop(0)
+                token = (" + " if current_line != "Order:" else " ") + ingredient
+                if button_font.size(current_line + token)[0] <= max_order_width:
+                    current_line += token
+                else:
+                    order_lines.append(current_line)
+                    current_line = "      " + ingredient
+                if not remaining and current_line:
+                    order_lines.append(current_line)
+            if remaining:
+                # append last line with ellipsis if there are more ingredients than fit
+                while remaining and button_font.size(current_line + " + " + remaining[0] + " ...")[0] <= max_order_width:
+                    current_line += " + " + remaining.pop(0)
+                if remaining:
+                    current_line = current_line.rstrip() + " ..."
+                if len(order_lines) < 3:
+                    order_lines.append(current_line)
+            if not order_lines:
+                order_lines.append(current_line)
+            if len(order_lines) > 3:
+                order_lines = order_lines[:3]
+        else:
+            order_lines = ["Order: None"]
+
+        for idx, line in enumerate(order_lines):
+            order_surface = button_font.render(line, True, BLACK)
+            order_text_rect = order_surface.get_rect(topleft=(oven_x + 25, oven_y + oven_height + 18 + idx * (button_font.get_height() + 4)))
+            screen.blit(order_surface, order_text_rect)
+
+        customer_label = f"Customer {current_customer_index + 1}/{len(customer_queue)}"
+        customer_surface = order_font.render(customer_label, True, (80, 80, 80))
+        customer_rect = customer_surface.get_rect(topleft=(oven_x + 25, oven_y + oven_height + 18 + len(order_lines) * (button_font.get_height() + 4)))
+        screen.blit(customer_surface, customer_rect)
+
+        order_ready = is_order_complete(current_customer_order_ingredients)
+        if order_ready:
+            order_button_rect = pygame.Rect(oven_x + oven_width - 210, oven_y + oven_height - 140, 170, 60)
+            pygame.draw.rect(screen, (76, 175, 80), order_button_rect, border_radius=18)
+            pygame.draw.rect(screen, (56, 142, 60), order_button_rect, 4, border_radius=18)
+            done_text = button_font.render("Order Done", True, WHITE)
+            done_rect = done_text.get_rect(center=order_button_rect.center)
+            screen.blit(done_text, done_rect)
+        else:
+            order_button_rect = None
+            status_surface = order_font.render("Complete the requested order to finish.", True, (90, 90, 90))
+            status_rect = status_surface.get_rect(topleft=(oven_x + 25, oven_y + oven_height + 18 + len(order_lines) * (button_font.get_height() + 4) + customer_surface.get_height() + 4))
+            screen.blit(status_surface, status_rect)
+
         # Draw exit button in top right
         exit_scaled = pygame.transform.scale(exit_btn, (120, 80))
         oven_exit_rect = pygame.Rect(WIDTH - 140, 20, 120, 80)
         screen.blit(exit_scaled, oven_exit_rect)
 
     elif state == "customer_screen":
+        exit_scaled = pygame.transform.scale(exit_btn, (120, 80))
+        exit_rect = pygame.Rect(150, 20, 120, 80)
+        screen.blit(exit_scaled, exit_rect)
 
         now = pygame.time.get_ticks()
         # Ensure list is not empty and index is within bounds
@@ -799,7 +987,10 @@ while True:
             else:
                 if selected_level is not None:
                     levels_completed = max(levels_completed, selected_level)
+                current_customer_index = 0
                 state = "kitchen_screen"
+                level_start_time = pygame.time.get_ticks()
+                level_failed = False
                 customer_timer = now
 
     # Removed the old block that automatically advanced past the entire queue
