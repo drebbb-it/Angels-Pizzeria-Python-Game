@@ -1,3 +1,8 @@
+#the levels logic: the level2, level3, level4, level5 is darkened until the player finishes the previous level. When the player clicks on a level, if they have completed the previous level, it will show the condition screen for that level. If they have not completed the previous level, it will show a warning message. After the player accepts the condition screen, it will show a message screen with the instructions for that level. But the rest will stay the same. The only problem is the user is able to play the darkened level even after not finishing the previous level.
+#make the level 1 already available to play, and the player can only play the next level if they have completed the previous level. 
+#make the not yet finished levels darkened and unclickable, and if the player clicks on them, it will show a warning message.
+#But the logic for the customer screen and the rest of the game will stay the same. The only problem is that the player can still click on the darkened levels and play them even if they have not finished the previous level. Please fix this issue and make sure that the player can only play the next level if they have completed the previous level, and that the not yet finished levels are darkened and unclickable, and that if the player clicks on them, it will show a warning message. Also, make sure that level 1 is already available to play when the player reaches the home screen.
+
 import pygame 
 import sys
 import random
@@ -104,7 +109,8 @@ for img in level_images:
     scaled_img = pygame.transform.scale(img, (LEVEL_WIDTH, LEVEL_HEIGHT))
     level_scaled.append(scaled_img)
 
-levels_completed = -1
+# ✅ FIXED: Level 1 available by default (0 = level 1 completed)
+levels_completed = 0 
 selected_level = None
 msg_screen_start_time = 0
 
@@ -306,18 +312,22 @@ def show_customer_ui(customer_key):
     lines = text.split('\n') 
     line_height = order_font.get_height() + 8 # Increased spacing slightly for readability
     
-    # Calculate starting Y to fit inside the speech bubble
-    # Based on your image, centering around HEIGHT // 2 - 80 works better
+    if customer_key == "boss":
+        # Based on the uploaded image, the bubble center is further right and slightly lower than regular customers
+        X_OFFSET = 100  
+        Y_OFFSET = -40  
+    else:
+        # Standard offsets for levels 1-4
+        X_OFFSET = 50   
+        Y_OFFSET = -80  
+
     total_text_height = len(lines) * line_height
-    start_y = (HEIGHT // 2 - 80) - (total_text_height // 2)
+    start_y = (HEIGHT // 2 + Y_OFFSET) - (total_text_height // 2)
 
     for i, line in enumerate(lines):
-        # Render the line
         line_surf = order_font.render(line, True, BLACK)
-        # Center horizontally, stack vertically
-        line_rect = line_surf.get_rect(center=(WIDTH // 2 + 50, start_y + (i * line_height)))
-        
-        # Draw the outline for this specific line
+        # Calculate centering for each line
+        line_rect = line_surf.get_rect(center=(WIDTH // 2 + X_OFFSET, start_y + (i * line_height)))
         draw_text_outline(line, order_font, BLACK, WHITE, line_rect.x, line_rect.y)
 
 # --- MAIN LOOP ---
@@ -370,6 +380,8 @@ while True:
 
         elif state == "home" and event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = pygame.mouse.get_pos()
+            
+            # Handle condition screen first (if active)
             if condition_state:
                 level_num = int(condition_state[-1])
                 accept_rect, exit_rect = draw_condition_screen(level_num)
@@ -394,7 +406,7 @@ while True:
                     LEVEL_HEIGHT
                 )
                 if level_rect.collidepoint(mouse_pos):
-                    if i <= levels_completed + 1:
+                    if i <= levels_completed:
                         condition_state = f"condition{i+1}"
                     else:
                         warning_active = True
