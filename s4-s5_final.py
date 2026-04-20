@@ -550,6 +550,12 @@ while True:
                 button_width,
                 button_height
             )
+            return_button_rect = pygame.Rect(
+                x_start + 7 * (button_width + button_spacing),
+                y_start + button_height + button_spacing + button_height + button_spacing,
+                button_width,
+                button_height
+            )
             # Define oven rectangle under the bell pepper button (index 1)
             oven_rect = pygame.Rect(
                 x_start + 1 * (button_width + button_spacing),
@@ -557,7 +563,6 @@ while True:
                 button_width,
                 100  # Height of the oven area
             )
-            return_button_rect = pygame.Rect(WIDTH - 220, HEIGHT - 120, 200, 80)
             failed_back_rect = pygame.Rect(WIDTH//2 - 75, HEIGHT//2 + 100, 150, 100)
             if level_failed:
                 if failed_back_rect.collidepoint(mouse_pos):
@@ -821,17 +826,22 @@ while True:
         stack_rect = stack_text.get_rect(center=(stack_bg_rect.centerx, stack_bg_rect.centery))
         screen.blit(stack_text, stack_rect)
 
-        # Draw return to levels button in bottom right of kitchen screen
+        # Draw return to levels button below remove button
         if selected_level is not None:
-            return_button_rect = pygame.Rect(WIDTH - 220, HEIGHT - 120, 200, 80)
+            return_button_rect = pygame.Rect(
+                x_start + 7 * (button_width + button_spacing),
+                y_start + button_height + button_spacing + button_height + button_spacing,
+                button_width,
+                button_height
+            )
             if level_finished:
-                pygame.draw.rect(screen, (64, 110, 150), return_button_rect, border_radius=18)
-                pygame.draw.rect(screen, (28, 58, 100), return_button_rect, 4, border_radius=18)
+                pygame.draw.rect(screen, (64, 110, 150), return_button_rect, border_radius=15)
+                pygame.draw.rect(screen, (28, 58, 100), return_button_rect, 3, border_radius=15)
                 button_text = button_font.render("Back to Levels", True, WHITE)
             else:
-                pygame.draw.rect(screen, (120, 120, 120), return_button_rect, border_radius=18)
-                pygame.draw.rect(screen, (80, 80, 80), return_button_rect, 4, border_radius=18)
-                button_text = button_font.render("Complete level to return", True, (220, 220, 220))
+                pygame.draw.rect(screen, (120, 120, 120), return_button_rect, border_radius=15)
+                pygame.draw.rect(screen, (80, 80, 80), return_button_rect, 3, border_radius=15)
+                button_text = button_font.render("Complete level", True, (220, 220, 220))
             screen.blit(button_text, (return_button_rect.centerx - button_text.get_width()//2,
                                       return_button_rect.centery - button_text.get_height()//2))
 
@@ -993,9 +1003,6 @@ while True:
                 level_failed = False
                 customer_timer = now
 
-    # Removed the old block that automatically advanced past the entire queue
-
-            
-            
+    # Removed the old block that automatically advanced past the entire queue 
     pygame.display.update()
     clock.tick(60)
