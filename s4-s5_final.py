@@ -503,7 +503,9 @@ while True:
                     LEVEL_HEIGHT
                 )
                 if level_rect.collidepoint(mouse_pos):
-                    if i <= levels_completed:
+                    # Level 0 (level 1) is always available
+                    # Level i requires level i-1 to be completed (levels_completed >= i)
+                    if i == 0 or levels_completed >= i:
                         condition_state = f"condition{i+1}"
                     else:
                         warning_active = True
@@ -635,7 +637,8 @@ while True:
                     customer_timer = pygame.time.get_ticks()
                     continue
                 else:
-                    if selected_level is not None:
+                    # Only unlock next level if time didn't run out
+                    if selected_level is not None and not level_failed:
                         levels_completed = max(levels_completed, selected_level)
                     level_finished = True
                     state = "kitchen_screen"
@@ -696,11 +699,15 @@ while True:
         for i in range(5):
             level_x = LEVEL_X_START + i * (LEVEL_WIDTH + LEVEL_SPACING)
             level_y = HEIGHT - LEVEL_HEIGHT - LEVEL_Y_OFFSET
-            if i > levels_completed:
+            # Level 0 (level 1) is always available; other levels require previous level to be completed
+            is_level_unlocked = (i == 0) or (levels_completed >= i)
+            if not is_level_unlocked:
+                # Darken locked levels
                 temp_surface = level_scaled[i].copy()
                 temp_surface.fill(DARK_GREY, special_flags=pygame.BLEND_RGBA_MULT)
                 screen.blit(temp_surface, (level_x, level_y))
             else:
+                # Display unlocked levels normally
                 screen.blit(level_scaled[i], (level_x, level_y))
         if condition_state:
             draw_condition_screen(int(condition_state.replace("condition", "")))
@@ -997,8 +1004,7 @@ while True:
                 current_customer_index += 1
                 customer_timer = pygame.time.get_ticks()
             else:
-                if selected_level is not None:
-                    levels_completed = max(levels_completed, selected_level)
+                # Don't increment levels_completed here - only increment after ALL orders are served successfully
                 current_customer_index = 0
                 state = "kitchen_screen"
                 level_start_time = pygame.time.get_ticks()
