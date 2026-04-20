@@ -328,13 +328,14 @@ customer_ingredient_map = {
 
 def start_level(level_num):
     # ADD 'current_level' to your global variables here:
-    global customer_queue, current_customer_index, customer_timer, state, current_level, level_finished, level_start_time, level_duration, level_failed
+    global customer_queue, current_customer_index, customer_timer, state, current_level, level_finished, level_start_time, level_duration, level_failed, ingredient_stack
     
     current_level = level_num # <-- Track the level so the UI knows which orders to use
     level_finished = False
     level_failed = False
     level_start_time = 0
     level_duration = int(level_data[level_num]["time"].split()[0]) if level_num in level_data else 60
+    ingredient_stack.clear()  # Clear the stack for the new level
 
     # Create the queue based on level (Your existing code stays exactly the same)
     if level_num == 1:
@@ -577,6 +578,7 @@ while True:
                 selected_level = None
                 kitchen_info_active = False
                 kitchen_selected_ingredient = None
+                ingredient_stack.clear()
             elif oven_rect.collidepoint(mouse_pos):
                 state = "oven_screen"
             else:
